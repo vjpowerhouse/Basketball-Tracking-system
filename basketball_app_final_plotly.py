@@ -1,13 +1,3 @@
-Perfect! Here’s the **full, ready-to-deploy Streamlit app**, cleaned up and complete, incorporating all your requirements:
-
-* **Clean data entry page** with side-by-side min/sec inputs
-* **Sections for Games, Shooting Practice, Conditioning**
-* **Trending graphs with decimal minutes** for drills
-* **Excel export with friendly column names** and 3pt/2pt % calculations
-
----
-
-```python
 import pandas as pd
 import streamlit as st
 import plotly.express as px
@@ -185,4 +175,3 @@ elif selected_tab=="Export Data":
             if not practice.empty:
                 practice_excel = pd.DataFrame({
                     "Date
-```

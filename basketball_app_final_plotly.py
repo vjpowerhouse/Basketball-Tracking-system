@@ -65,8 +65,11 @@ with st.form("activity_form"):
         notes = f"3pt: {three_made}/{three_attempted}, 2pt: {two_made}/{two_attempted}"
 
     elif activity_type == "Practice":
-        time_21 = st.number_input("Time for 21-points drill (s)", min_value=0)
-        time_layups = st.number_input("Time for 10 layups (s)", min_value=0)
+        # Time split into minutes/seconds
+        t21_min = st.number_input("Time for 21-points drill (min)", min_value=0)
+        t21_sec = st.number_input("Time for 21-points drill (sec)", min_value=0)
+        tl_min = st.number_input("Time for 10 layups (min)", min_value=0)
+        tl_sec = st.number_input("Time for 10 layups (sec)", min_value=0)
         around_key = st.number_input("# Around Key shots in 4 mins", min_value=0)
         three_p_4min = st.number_input("# 3-pointers in 4 mins", min_value=0)
         three_made_p = st.number_input("3-point shots made", min_value=0)
@@ -74,19 +77,28 @@ with st.form("activity_form"):
         mid_made = st.number_input("Mid-range shots made", min_value=0)
         mid_attempted = st.number_input("Mid-range shots attempted", min_value=0)
 
-        # Calculate %
-        three_pct = round(three_made_p / three_attempted_p * 100, 1) if three_attempted_p else 0
-        mid_pct = round(mid_made / mid_attempted * 100, 1) if mid_attempted else 0
-
-        metric1, metric2, metric3, metric4, metric5, metric6 = time_21, time_layups, around_key, three_p_4min, three_pct, mid_pct
-        notes = f"3pt: {three_made_p}/{three_attempted_p} ({three_pct}%), Mid-range: {mid_made}/{mid_attempted} ({mid_pct}%)"
+        # Convert to total seconds
+        metric1 = t21_min*60 + t21_sec
+        metric2 = tl_min*60 + tl_sec
+        metric3 = around_key
+        metric4 = three_p_4min
+        metric5 = round(three_made_p / three_attempted_p * 100, 1) if three_attempted_p else 0
+        metric6 = round(mid_made / mid_attempted * 100, 1) if mid_attempted else 0
+        notes = f"3pt: {three_made_p}/{three_attempted_p} ({metric5}%), Mid-range: {mid_made}/{mid_attempted} ({metric6}%)"
 
     elif activity_type == "Conditioning":
-        time_17s = st.number_input("Time for 17s drill (s)", min_value=0)
-        time_1_suicide = st.number_input("Time for 1 suicide (s)", min_value=0)
-        time_5_suicides = st.number_input("Time for 5 suicides (s)", min_value=0)
+        t17_min = st.number_input("Time for 17s drill (min)", min_value=0)
+        t17_sec = st.number_input("Time for 17s drill (sec)", min_value=0)
+        t1s_min = st.number_input("Time for 1 suicide (min)", min_value=0)
+        t1s_sec = st.number_input("Time for 1 suicide (sec)", min_value=0)
+        t5s_min = st.number_input("Time for 5 suicides (min)", min_value=0)
+        t5s_sec = st.number_input("Time for 5 suicides (sec)", min_value=0)
         defensive_slides = st.number_input("Number of defensive slides in 30s", min_value=0)
-        metric1, metric2, metric3, metric4 = time_17s, time_1_suicide, time_5_suicides, defensive_slides
+
+        metric1 = t17_min*60 + t17_sec
+        metric2 = t1s_min*60 + t1s_sec
+        metric3 = t5s_min*60 + t5s_sec
+        metric4 = defensive_slides
 
     submit = st.form_submit_button("Add Activity")
 
@@ -124,11 +136,11 @@ if not data.empty:
         filtered_data = filtered_data.dropna(subset=["Metric1"])
         if not filtered_data.empty:
             if activity_type=="Games":
-                metrics_plot = ["Metric1","Metric2"]  # Points & Assists
+                metrics_plot = ["Metric1","Metric2"]
             elif activity_type=="Practice":
-                metrics_plot = ["Metric5","Metric6"]  # 3pt % & Mid %
+                metrics_plot = ["Metric5","Metric6"]
             else:
-                metrics_plot = ["Metric1","Metric2"]  # Time 17s & 1 suicide
+                metrics_plot = ["Metric1","Metric2"]
 
             for m in metrics_plot:
                 fig = px.line(filtered_data, x="Date", y=m, color="Player",
@@ -136,7 +148,7 @@ if not data.empty:
                 st.plotly_chart(fig, use_container_width=True)
 
 # ======================
-# Export to Excel with Tabs
+# Export to Excel
 # ======================
 def export_to_excel(data):
     output = io.BytesIO()
@@ -186,8 +198,7 @@ def export_to_excel(data):
             cond_excel.to_excel(writer, sheet_name="Conditioning", index=False)
 
         writer.save()
-        processed_data = output.getvalue()
-    return processed_data
+        return output.getvalue()
 
 st.subheader("Export Data")
 st.download_button(

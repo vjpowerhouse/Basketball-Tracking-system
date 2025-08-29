@@ -2,11 +2,12 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+from io import BytesIO
 
 # -------------------
 # File settings
 # -------------------
-EXCEL_FILE = "basketball_metrics.xlsx"
+EXCEL_FILE = "basketball_tracker.xlsx"
 
 # -------------------
 # Page Config
@@ -57,54 +58,62 @@ st.markdown('<div class="subtitle">"The most important thing is to try and inspi
 st.markdown("---")
 
 # -------------------
-# Load / Initialize Data
+# Initialize DataFrames
 # -------------------
 if os.path.exists(EXCEL_FILE):
-    df = pd.read_excel(EXCEL_FILE)
+    xl = pd.ExcelFile(EXCEL_FILE)
+    games_df = pd.read_excel(xl, "Games")
+    shooting_df = pd.read_excel(xl, "Shooting")
+    conditioning_df = pd.read_excel(xl, "Conditioning")
 else:
-    df = pd.DataFrame(columns=["Date", "Shots Made", "Shots Attempted", "1 Dribble Pullups", "Lateral Shuffle Time", "Bronco Test Time"])
+    games_df = pd.DataFrame(columns=["Date", "Points", "Assists", "Turnovers", "Steals",
+                                     "3pt Made", "3pt Attempted", "2pt Made", "2pt Attempted"])
+    shooting_df = pd.DataFrame(columns=["Date", "21 Drill (min)", "21 Drill (sec)",
+                                        "10 Layups (min)", "10 Layups (sec)",
+                                        "Around Key (shots)", "3pt in 4min",
+                                        "3pt Made", "3pt Attempted", "2pt Made", "2pt Attempted"])
+    conditioning_df = pd.DataFrame(columns=["Date", "17s Drill (sec)",
+                                            "1 Suicide (sec)", "5 Suicides (sec)",
+                                            "Def Slides (30s)"])
 
 # -------------------
-# Data Entry Form
+# Tabs for Data Entry
 # -------------------
-st.header("📊 Enter Today's Metrics")
+tab1, tab2, tab3, tab4 = st.tabs(["🏀 Games", "🎯 Shooting Practice", "💪 Conditioning", "📊 Metrics & Export"])
 
-with st.form("entry_form", clear_on_submit=True):
-    date = st.date_input("Date")
-    shots_made = st.number_input("Shots Made", min_value=0, step=1)
-    shots_attempted = st.number_input("Shots Attempted", min_value=0, step=1)
-    pullups = st.number_input("1 Dribble Pullups Made", min_value=0, step=1)
-    shuffle_time = st.number_input("Lateral Shuffle Time (seconds)", min_value=0.0, step=0.1)
-    bronco_time = st.number_input("Bronco Test Time (seconds)", min_value=0.0, step=0.1)
-    submitted = st.form_submit_button("Save Entry 🏀")
+with tab1:
+    st.subheader("Enter Game Data")
+    with st.form("games_form", clear_on_submit=True):
+        date = st.date_input("Date")
+        points = st.number_input("Points", min_value=0, step=1)
+        assists = st.number_input("Assists", min_value=0, step=1)
+        turnovers = st.number_input("Turnovers", min_value=0, step=1)
+        steals = st.number_input("Steals", min_value=0, step=1)
+        g3m = st.number_input("3pt Made", min_value=0, step=1)
+        g3a = st.number_input("3pt Attempted", min_value=0, step=1)
+        g2m = st.number_input("2pt Made", min_value=0, step=1)
+        g2a = st.number_input("2pt Attempted", min_value=0, step=1)
+        submitted = st.form_submit_button("Save Game Data")
+    if submitted:
+        new_row = pd.DataFrame([[date, points, assists, turnovers, steals, g3m, g3a, g2m, g2a]],
+                               columns=games_df.columns)
+        games_df = pd.concat([games_df, new_row], ignore_index=True)
+        st.success("✅ Game data saved!")
 
-if submitted:
-    new_data = pd.DataFrame([[date, shots_made, shots_attempted, pullups, shuffle_time, bronco_time]],
-                            columns=df.columns)
-    df = pd.concat([df, new_data], ignore_index=True)
-    df.to_excel(EXCEL_FILE, index=False)
-    st.success("✅ Entry saved successfully!")
-
-# -------------------
-# Display Data
-# -------------------
-st.header("📂 Data Table")
-st.dataframe(df, use_container_width=True)
-
-# -------------------
-# Charts
-# -------------------
-st.header("📈 Performance Charts")
-
-if not df.empty:
-    metrics = {
-        "Shooting Percentage": (df["Shots Made"] / df["Shots Attempted"]) * 100,
-        "1 Dribble Pullups": df["1 Dribble Pullups"],
-        "Lateral Shuffle Time": df["Lateral Shuffle Time"],
-        "Bronco Test Time": df["Bronco Test Time"]
-    }
-
-    for metric, values in metrics.items():
-        chart_df = pd.DataFrame({"Date": df["Date"], metric: values})
-        fig = px.line(chart_df, x="Date", y=metric, markers=True, title=metric)
-        st.plotly_chart(fig, use_container_width=True)
+with tab2:
+    st.subheader("Enter Shooting Practice Data")
+    with st.form("shooting_form", clear_on_submit=True):
+        date = st.date_input("Date", key="shooting_date")
+        c1, c2 = st.columns(2)
+        d21m = c1.number_input("21 Drill (min)", min_value=0, step=1)
+        d21s = c2.number_input("21 Drill (sec)", min_value=0, step=1)
+        c3, c4 = st.columns(2)
+        laym = c3.number_input("10 Layups (min)", min_value=0, step=1)
+        lays = c4.number_input("10 Layups (sec)", min_value=0, step=1)
+        around_key = st.number_input("Around the Key Shots in 4 min", min_value=0, step=1)
+        threes_4min = st.number_input("3pt in 4 min", min_value=0, step=1)
+        c5, c6 = st.columns(2)
+        s3m = c5.number_input("3pt Made", min_value=0, step=1)
+        s3a = c6.number_input("3pt Attempted", min_value=0, step=1)
+        c7, c8 = st.columns(2)
+        s2m =

@@ -148,4 +148,10 @@ if os.path.exists("gcp_credentials.json") and st.checkbox("Export to Google Shee
         with open("gcp_credentials.json") as f:
             gcp_json = json.load(f)
         gc = gspread.service_account_from_dict(gcp_json)
-        sheet_name = st.text_input("Google Sheet N
+        sheet_name = st.text_input("Google Sheet Name", "BasketballData")
+        if st.button("Push to Google Sheets"):
+            sh = gc.open(sheet_name).sheet1
+            sh.update([data.columns.values.tolist()] + data.values.tolist())
+            st.success(f"Data exported to Google Sheet: {sheet_name}")
+    except Exception as e:
+        st.error(f"Error exporting to Google Sheets: {e}")

@@ -1,3 +1,13 @@
+Perfect! Here’s the **full, ready-to-deploy Streamlit app**, cleaned up and complete, incorporating all your requirements:
+
+* **Clean data entry page** with side-by-side min/sec inputs
+* **Sections for Games, Shooting Practice, Conditioning**
+* **Trending graphs with decimal minutes** for drills
+* **Excel export with friendly column names** and 3pt/2pt % calculations
+
+---
+
+```python
 import pandas as pd
 import streamlit as st
 import plotly.express as px
@@ -23,12 +33,6 @@ if os.path.exists(DATA_FILE):
             data[col] = None
 else:
     data = pd.DataFrame(columns=DATA_COLUMNS)
-
-# ======================
-# Preserve activity type across reruns
-# ======================
-if "activity_type" not in st.session_state:
-    st.session_state["activity_type"] = "Games"
 
 # ======================
 # Data Entry Section
@@ -132,7 +136,7 @@ if submit:
     st.success(f"Added new {activity_type} for {player} on {date.strftime('%Y-%m-%d')}")
 
 # ======================
-# Organized Trending & Export Links
+# Analytics & Export Section
 # ======================
 st.subheader("Analytics & Data Export")
 
@@ -147,7 +151,6 @@ if selected_tab in ["Games", "Shooting Practice", "Conditioning"]:
             filtered_data[col] = pd.to_numeric(filtered_data[col], errors="coerce")
         filtered_data = filtered_data.dropna(subset=["Metric1"])
         if not filtered_data.empty:
-            # Convert seconds to decimal minutes for drills
             if selected_tab in ["Shooting Practice","Conditioning"]:
                 for c in ["Metric1","Metric2","Metric3"]:
                     filtered_data[c] = (filtered_data[c]/60).round(2)
@@ -181,14 +184,5 @@ elif selected_tab=="Export Data":
             practice = data[data["Activity Type"]=="Shooting Practice"]
             if not practice.empty:
                 practice_excel = pd.DataFrame({
-                    "Date": practice["Date"], "Player": practice["Player"],
-                    "21pts drill (min)": (practice["Metric1"]/60).round(2),
-                    "10 layups (min)": (practice["Metric2"]/60).round(2),
-                    "# Around Key shots": practice["Metric3"],
-                    "# 3pt in 4min": practice["Metric4"], "3pt %": practice["Metric5"],
-                    "Mid-range %": practice["Metric6"], "Notes": practice["Notes"]
-                })
-                practice_excel.to_excel(writer, sheet_name="Shooting Practice", index=False)
-
-            # Conditioning
-            cond = data[data["Activity Type"]
+                    "Date
+```

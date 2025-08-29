@@ -9,15 +9,32 @@ st.set_page_config(page_title="Basketball Tracking Dashboard", layout="wide")
 st.title("Basketball Tracking Dashboard")
 
 DATA_FILE = "basketball_data.csv"
+DATA_COLUMNS = ["Date", "Player", "Activity Type",
+                "Metric1","Metric2","Metric3","Metric4","Metric5","Metric6","Notes"]
 
 # ======================
 # Load or initialize data
 # ======================
 if os.path.exists(DATA_FILE):
     data = pd.read_csv(DATA_FILE)
+    for col in DATA_COLUMNS:
+        if col not in data.columns:
+            data[col] = None
 else:
-    data = pd.DataFrame(columns=["Date", "Player", "Activity Type",
-                                 "Metric1","Metric2","Metric3","Metric4","Metric5","Metric6","Notes"])
+    data = pd.DataFrame(columns=DATA_COLUMNS)
+
+# ======================
+# Preserve activity type across reruns
+# ======================
+if "activity_type" not in st.session_state:
+    st.session_state["activity_type"] = "Games"
+
+activity_type = st.selectbox(
+    "Select Activity Type",
+    ["Games", "Practice", "Conditioning"],
+    index=["Games","Practice","Conditioning"].index(st.session_state["activity_type"])
+)
+st.session_state["activity_type"] = activity_type
 
 # ======================
 # Add New Activity Form
@@ -27,9 +44,7 @@ st.subheader("Add New Activity")
 with st.form("activity_form"):
     date = st.date_input("Date", datetime.today())
     player = st.text_input("Player Name")
-    activity_type = st.selectbox("Activity Type", ["Games", "Practice", "Conditioning"])
-    
-    # Default placeholders
+
     metric1 = metric2 = metric3 = metric4 = metric5 = metric6 = None
     notes = ""
 
@@ -53,7 +68,6 @@ with st.form("activity_form"):
         mid_made = st.number_input("Mid-range shots made", min_value=0)
         mid_attempted = st.number_input("Mid-range shots attempted", min_value=0)
 
-        # Auto-calc percentages
         three_pct = round(three_made / three_attempted * 100, 1) if three_attempted else 0
         mid_pct = round(mid_made / mid_attempted * 100, 1) if mid_attempted else 0
 
@@ -106,33 +120,32 @@ st.dataframe(data)
 st.subheader("Trending Analysis")
 
 if not data.empty:
-    activity_filter = st.selectbox("Select Activity Type for Trending", data["Activity Type"].unique())
-    filtered_data = data[data["Activity Type"] == activity_filter].copy()
-
+    filtered_data = data[data["Activity Type"] == activity_type].copy()
     if not filtered_data.empty:
         filtered_data["Date"] = pd.to_datetime(filtered_data["Date"], errors="coerce")
-        # Convert numeric metrics safely
         for col in ["Metric1","Metric2","Metric3","Metric4","Metric5","Metric6"]:
             if col in filtered_data.columns:
                 filtered_data[col] = pd.to_numeric(filtered_data[col], errors="coerce")
-
-        # Drop rows where Metric1 is missing
         filtered_data = filtered_data.dropna(subset=["Metric1"])
 
         if not filtered_data.empty:
-            # Pick up to first 2 metrics for trending
-            metrics_to_plot = ["Metric1","Metric2"] if filtered_data["Metric2"].notnull().any() else ["Metric1"]
+            # Define meaningful metric per activity type
+            if activity_type == "Games":
+                metric_plot = ["Metric1","Metric2"]  # Points & Assists
+            elif activity_type == "Practice":
+                metric_plot = ["Metric5","Metric6"]  # 3pt% & Mid%
+            else:
+                metric_plot = ["Metric1","Metric2"]  # Time for 17s & 1 suicide
 
-            for metric in metrics_to_plot:
+            for metric in metric_plot:
                 fig = px.line(filtered_data, x="Date", y=metric, color="Player",
-                              title=f"{activity_filter} - {metric} Trend", markers=True)
+                              title=f"{activity_type} - {metric} Trend", markers=True)
                 st.plotly_chart(fig, use_container_width=True)
 
 # ======================
 # Export Data
 # ======================
 st.subheader("Export Data")
-
 csv_export = data.to_csv(index=False)
 st.download_button(
     label="Download data as CSV",

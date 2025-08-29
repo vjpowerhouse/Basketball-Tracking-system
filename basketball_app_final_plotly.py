@@ -16,7 +16,8 @@ DATA_FILE = "basketball_data.csv"
 if os.path.exists(DATA_FILE):
     data = pd.read_csv(DATA_FILE)
 else:
-    data = pd.DataFrame(columns=["Date", "Player", "Activity Type", "Metric1", "Metric2", "Notes"])
+    data = pd.DataFrame(columns=["Date", "Player", "Activity Type",
+                                 "Metric1","Metric2","Metric3","Metric4","Metric5","Metric6","Notes"])
 
 # ======================
 # Add New Activity Form
@@ -26,10 +27,54 @@ st.subheader("Add New Activity")
 with st.form("activity_form"):
     date = st.date_input("Date", datetime.today())
     player = st.text_input("Player Name")
-    activity_type = st.selectbox("Activity Type", ["Game", "Shooting Drill", "Conditioning"])
-    metric1 = st.text_input("Metric 1 (e.g., Points, Made, Minutes)")
-    metric2 = st.text_input("Metric 2 (e.g., Rebounds, Attempts, HR Avg)")
-    notes = st.text_area("Notes (optional)")
+    activity_type = st.selectbox("Activity Type", ["Games", "Practice", "Conditioning"])
+    
+    # Default placeholders
+    metric1 = metric2 = metric3 = metric4 = metric5 = metric6 = None
+    notes = ""
+
+    if activity_type == "Games":
+        points = st.number_input("Points", min_value=0)
+        assists = st.number_input("Assists", min_value=0)
+        turnovers = st.number_input("Turnovers", min_value=0)
+        steals = st.number_input("Steals", min_value=0)
+        metric1 = points
+        metric2 = assists
+        metric3 = turnovers
+        metric4 = steals
+
+    elif activity_type == "Practice":
+        time_21 = st.number_input("Time for 21-points drill (s)", min_value=0)
+        time_layups = st.number_input("Time for 10 layups (s)", min_value=0)
+        around_key = st.number_input("# Around the Key shots in 4 mins", min_value=0)
+        three_p_4min = st.number_input("# 3-pointers in 4 mins", min_value=0)
+        three_made = st.number_input("3-point shots made", min_value=0)
+        three_attempted = st.number_input("3-point shots attempted", min_value=0)
+        mid_made = st.number_input("Mid-range shots made", min_value=0)
+        mid_attempted = st.number_input("Mid-range shots attempted", min_value=0)
+
+        # Auto-calc percentages
+        three_pct = round(three_made / three_attempted * 100, 1) if three_attempted else 0
+        mid_pct = round(mid_made / mid_attempted * 100, 1) if mid_attempted else 0
+
+        metric1 = time_21
+        metric2 = time_layups
+        metric3 = around_key
+        metric4 = three_p_4min
+        metric5 = three_pct
+        metric6 = mid_pct
+        notes = f"3pt: {three_made}/{three_attempted} ({three_pct}%), Mid-range: {mid_made}/{mid_attempted} ({mid_pct}%)"
+
+    elif activity_type == "Conditioning":
+        time_17s = st.number_input("Time for 17s drill (s)", min_value=0)
+        time_1_suicide = st.number_input("Time for 1 suicide (s)", min_value=0)
+        time_5_suicides = st.number_input("Time for 5 suicides (s)", min_value=0)
+        defensive_slides = st.number_input("Number of defensive slides in 30s", min_value=0)
+        metric1 = time_17s
+        metric2 = time_1_suicide
+        metric3 = time_5_suicides
+        metric4 = defensive_slides
+
     submit = st.form_submit_button("Add Activity")
 
 if submit:
@@ -39,6 +84,10 @@ if submit:
         "Activity Type": [activity_type],
         "Metric1": [metric1],
         "Metric2": [metric2],
+        "Metric3": [metric3],
+        "Metric4": [metric4],
+        "Metric5": [metric5],
+        "Metric6": [metric6],
         "Notes": [notes]
     })
     data = pd.concat([data, new_row], ignore_index=True)
@@ -57,26 +106,27 @@ st.dataframe(data)
 st.subheader("Trending Analysis")
 
 if not data.empty:
-    # Filter by activity type
     activity_filter = st.selectbox("Select Activity Type for Trending", data["Activity Type"].unique())
     filtered_data = data[data["Activity Type"] == activity_filter].copy()
 
     if not filtered_data.empty:
         filtered_data["Date"] = pd.to_datetime(filtered_data["Date"], errors="coerce")
-        filtered_data["Metric1"] = pd.to_numeric(filtered_data["Metric1"], errors="coerce")
-        filtered_data = filtered_data.dropna(subset=["Date", "Metric1"])
+        # Convert numeric metrics safely
+        for col in ["Metric1","Metric2","Metric3","Metric4","Metric5","Metric6"]:
+            if col in filtered_data.columns:
+                filtered_data[col] = pd.to_numeric(filtered_data[col], errors="coerce")
+
+        # Drop rows where Metric1 is missing
+        filtered_data = filtered_data.dropna(subset=["Metric1"])
 
         if not filtered_data.empty:
-            fig1 = px.line(filtered_data, x="Date", y="Metric1", color="Player",
-                           title=f"{activity_filter} - Metric1 Trend", markers=True)
-            st.plotly_chart(fig1, use_container_width=True)
+            # Pick up to first 2 metrics for trending
+            metrics_to_plot = ["Metric1","Metric2"] if filtered_data["Metric2"].notnull().any() else ["Metric1"]
 
-            # Optional Metric2 chart if numeric
-            filtered_data["Metric2"] = pd.to_numeric(filtered_data["Metric2"], errors="coerce")
-            if filtered_data["Metric2"].notnull().any():
-                fig2 = px.line(filtered_data, x="Date", y="Metric2", color="Player",
-                               title=f"{activity_filter} - Metric2 Trend", markers=True)
-                st.plotly_chart(fig2, use_container_width=True)
+            for metric in metrics_to_plot:
+                fig = px.line(filtered_data, x="Date", y=metric, color="Player",
+                              title=f"{activity_filter} - {metric} Trend", markers=True)
+                st.plotly_chart(fig, use_container_width=True)
 
 # ======================
 # Export Data
@@ -91,17 +141,11 @@ st.download_button(
     mime='text/csv'
 )
 
-# Optional: Export to Google Sheets if credentials exist
+# Optional Google Sheets export
 if os.path.exists("gcp_credentials.json") and st.checkbox("Export to Google Sheets"):
     try:
         import gspread
         with open("gcp_credentials.json") as f:
             gcp_json = json.load(f)
         gc = gspread.service_account_from_dict(gcp_json)
-        sheet_name = st.text_input("Google Sheet Name", "BasketballData")
-        if st.button("Push to Google Sheets"):
-            sh = gc.open(sheet_name).sheet1
-            sh.update([data.columns.values.tolist()] + data.values.tolist())
-            st.success(f"Data exported to Google Sheet: {sheet_name}")
-    except Exception as e:
-        st.error(f"Error exporting to Google Sheets: {e}")
+        sheet_name = st.text_input("Google Sheet N

@@ -13,9 +13,7 @@ DATA_COLUMNS = ["Date", "Player", "Activity Type",
                 "Metric1","Metric2","Metric3","Metric4","Metric5","Metric6",
                 "ThreeMade","ThreeAttempted","TwoMade","TwoAttempted","Notes"]
 
-# ======================
 # Load or initialize data
-# ======================
 if os.path.exists(DATA_FILE):
     data = pd.read_csv(DATA_FILE)
     for col in DATA_COLUMNS:
@@ -24,25 +22,18 @@ if os.path.exists(DATA_FILE):
 else:
     data = pd.DataFrame(columns=DATA_COLUMNS)
 
-# ======================
 # Data Entry Section
-# ======================
 st.subheader("Add New Activity")
 
 with st.form("activity_form"):
     date = st.date_input("Date", datetime.today())
     player = st.text_input("Player Name")
 
-    # Default placeholders
     metric1 = metric2 = metric3 = metric4 = metric5 = metric6 = 0
     three_made = three_attempted = two_made = two_attempted = 0
     notes = ""
 
-    # Choose activity type in form
-    activity_type = st.selectbox(
-        "Select Activity Type",
-        ["Games", "Shooting Practice", "Conditioning"]
-    )
+    activity_type = st.selectbox("Select Activity Type", ["Games", "Shooting Practice", "Conditioning"])
 
     if activity_type == "Games":
         points = st.number_input("Points", min_value=0)
@@ -57,17 +48,16 @@ with st.form("activity_form"):
         notes = f"3pt: {three_made}/{three_attempted}, 2pt: {two_made}/{two_attempted}"
 
     elif activity_type == "Shooting Practice":
-        # Side-by-side time inputs using columns
         col1, col2 = st.columns(2)
         with col1:
-            t21_min = st.number_input("21-pts drill (min)", min_value=0, key="t21_min")
+            t21_min = st.number_input("21-pts drill (min)", min_value=0)
         with col2:
-            t21_sec = st.number_input("21-pts drill (sec)", min_value=0, key="t21_sec")
+            t21_sec = st.number_input("21-pts drill (sec)", min_value=0)
         col3, col4 = st.columns(2)
         with col3:
-            t10_min = st.number_input("10 layups (min)", min_value=0, key="t10_min")
+            t10_min = st.number_input("10 layups (min)", min_value=0)
         with col4:
-            t10_sec = st.number_input("10 layups (sec)", min_value=0, key="t10_sec")
+            t10_sec = st.number_input("10 layups (sec)", min_value=0)
 
         around_key = st.number_input("# Around Key shots in 4 mins", min_value=0)
         three_p_4min = st.number_input("# 3-pointers in 4 mins", min_value=0)
@@ -76,7 +66,6 @@ with st.form("activity_form"):
         mid_made = st.number_input("Mid-range shots made", min_value=0)
         mid_attempted = st.number_input("Mid-range shots attempted", min_value=0)
 
-        # Convert to total seconds internally
         metric1 = t21_min*60 + t21_sec
         metric2 = t10_min*60 + t10_sec
         metric3 = around_key
@@ -88,19 +77,19 @@ with st.form("activity_form"):
     elif activity_type == "Conditioning":
         col1, col2 = st.columns(2)
         with col1:
-            t17_min = st.number_input("17s drill (min)", min_value=0, key="t17_min")
+            t17_min = st.number_input("17s drill (min)", min_value=0)
         with col2:
-            t17_sec = st.number_input("17s drill (sec)", min_value=0, key="t17_sec")
+            t17_sec = st.number_input("17s drill (sec)", min_value=0)
         col3, col4 = st.columns(2)
         with col3:
-            t1s_min = st.number_input("1 suicide (min)", min_value=0, key="t1s_min")
+            t1s_min = st.number_input("1 suicide (min)", min_value=0)
         with col4:
-            t1s_sec = st.number_input("1 suicide (sec)", min_value=0, key="t1s_sec")
+            t1s_sec = st.number_input("1 suicide (sec)", min_value=0)
         col5, col6 = st.columns(2)
         with col5:
-            t5s_min = st.number_input("5 suicides (min)", min_value=0, key="t5s_min")
+            t5s_min = st.number_input("5 suicides (min)", min_value=0)
         with col6:
-            t5s_sec = st.number_input("5 suicides (sec)", min_value=0, key="t5s_sec")
+            t5s_sec = st.number_input("5 suicides (sec)", min_value=0)
 
         defensive_slides = st.number_input("Number of defensive slides in 30s", min_value=0)
         metric1 = t17_min*60 + t17_sec
@@ -125,11 +114,8 @@ if submit:
     data.to_csv(DATA_FILE, index=False)
     st.success(f"Added new {activity_type} for {player} on {date.strftime('%Y-%m-%d')}")
 
-# ======================
 # Analytics & Export Section
-# ======================
 st.subheader("Analytics & Data Export")
-
 tabs = ["Games", "Shooting Practice", "Conditioning", "Export Data"]
 selected_tab = st.radio("Select View", tabs, horizontal=True)
 
@@ -144,7 +130,6 @@ if selected_tab in ["Games", "Shooting Practice", "Conditioning"]:
             if selected_tab in ["Shooting Practice","Conditioning"]:
                 for c in ["Metric1","Metric2","Metric3"]:
                     filtered_data[c] = (filtered_data[c]/60).round(2)
-
             fig = px.line(filtered_data, x="Date", y=["Metric1","Metric2","Metric3"],
                           color="Player", markers=True,
                           title=f"{selected_tab} Trends (Minutes for drills)")
@@ -174,4 +159,33 @@ elif selected_tab=="Export Data":
             practice = data[data["Activity Type"]=="Shooting Practice"]
             if not practice.empty:
                 practice_excel = pd.DataFrame({
-                    "Date
+                    "Date": practice["Date"], "Player": practice["Player"],
+                    "21pts drill (min)": (practice["Metric1"]/60).round(2),
+                    "10 layups (min)": (practice["Metric2"]/60).round(2),
+                    "# Around Key shots": practice["Metric3"],
+                    "# 3pt in 4min": practice["Metric4"], "3pt %": practice["Metric5"],
+                    "Mid-range %": practice["Metric6"], "Notes": practice["Notes"]
+                })
+                practice_excel.to_excel(writer, sheet_name="Shooting Practice", index=False)
+
+            # Conditioning
+            cond = data[data["Activity Type"]=="Conditioning"]
+            if not cond.empty:
+                cond_excel = pd.DataFrame({
+                    "Date": cond["Date"], "Player": cond["Player"],
+                    "17s drill (min)": (cond["Metric1"]/60).round(2),
+                    "1 suicide (min)": (cond["Metric2"]/60).round(2),
+                    "5 suicides (min)": (cond["Metric3"]/60).round(2),
+                    "# Defensive slides": cond["Metric4"], "Notes": cond["Notes"]
+                })
+                cond_excel.to_excel(writer, sheet_name="Conditioning", index=False)
+
+            writer.save()
+            return output.getvalue()
+
+    st.download_button(
+        label="Download Excel",
+        data=export_to_excel(data),
+        file_name="basketball_data.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )

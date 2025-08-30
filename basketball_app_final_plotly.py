@@ -2,18 +2,30 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from io import BytesIO
+import base64
 
 st.set_page_config(page_title="Basketball Tracker", layout="wide")
+
+# -------------------------------
+# Helper to load local images for Plotly background
+# -------------------------------
+def get_base64_image(img_path):
+    with open(img_path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+court_bg_base64 = get_base64_image("court_bg.png")
 
 # -------------------------------
 # Header
 # -------------------------------
 st.markdown(
-    """
+    f"""
     <div style="text-align:center;">
-        <img src="https://upload.wikimedia.org/wikipedia/en/2/21/Kobe_Bryant_8.png" width="120"/>
+        <img src="kobe.png" width="120"/>  <!-- Kobe image -->
         <h1>🏀 Basketball Performance Tracker</h1>
-        <h3 style="font-style:italic;color:#555;">"The most important thing is to try and inspire people so that they can be great in whatever they want to do." – Kobe Bryant</h3>
+        <h3 style="font-style:italic;color:#555;">
+        "The most important thing is you must put everybody on notice that you're here and you are for real." – Kobe Bryant
+        </h3>
     </div>
     """, unsafe_allow_html=True
 )
@@ -169,7 +181,7 @@ def show_graphs(data, activity_name):
             fig = px.line(df, y=col, title=f"{activity_name} - {col}", markers=True)
             fig.update_layout(
                 images=[dict(
-                    source="https://i.imgur.com/hbGgF9G.png",
+                    source=f"data:image/png;base64,{court_bg_base64}",
                     xref="paper", yref="paper",
                     x=0, y=1,
                     sizex=1, sizey=1,

@@ -2,16 +2,8 @@
   "short_name": "BasketballTracker",
   "name": "Basketball Performance Tracker",
   "icons": [
-    {
-      "src": "logo.png",
-      "type": "image/png",
-      "sizes": "192x192"
-    },
-    {
-      "src": "logo.png",
-      "type": "image/png",
-      "sizes": "512x512"
-    }
+    {"src": "logo.png","type": "image/png","sizes": "192x192"},
+    {"src": "logo.png","type": "image/png","sizes": "512x512"}
   ],
   "start_url": ".",
   "display": "standalone",

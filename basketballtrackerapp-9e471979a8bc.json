@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "basketballtrackerapp",
+  "private_key_id": "9e471979a8bc8363c39c004a8cc94536a801fbd5",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCx3W8ltea0vIfp\nlBEnA33xmFv/h+gONgoSh6I1wLHCsDrQQz7Ddu0svJTtPmCn/NossahHjBbO8Ums\nPJ3dLxuXq6/r9nNIkfzumMb2W0HnNEFlOqkBFKep6JaJUzfEfEluJ+n3gFMp9OmC\nfMjeRwDHqtR/Yg7sgQIepypA5dkF7SllPthAaUNvyCfK/vJFmehLyJwwgbWQtRHl\nPyqJN2Pn7vI/3JegKR7tEjuz2H7Ns9CfYFnxpxhBZWB3TY+Y3XNYBl1hvIJAzUP6\nH7IPFKPTo/HgLbwygeuF0a5UrhSIIjS+UsPbEFKtb8IfWO8xo2wGZSwgvYIiQ1TF\ncpZ71mAnAgMBAAECggEAQBNHGr08hwjSJ6YFRdo+sV3TaqtRwGjcWQ+OsrGf+ESX\nc3Z+MllyGOc4+Xy6wlnXWTmJJ3lCsDuBcHCH6GozlQCvSCDJKDAbf/L+3jpC9CFB\nm8+1maOQwSd+r6sQkJK7u1jasySCET/fLXh5voWytLuIgPlY6f+RvWw4TxfehoDu\nzxg7vonfkwoumaOJ3QWzOK6v3gNFdIo4xf3vlnGCwLEdqwU8T+19VAsCTnBoqe9r\nM7x12UndWqChiS2YelrR/fS2uDkdnN5gHmaYtmefAVnlS0hl6Lg1R1QPeLbos881\nzQDQyvTzuyEIBEuhgA1r/gbjHa8XCjSB7sImDJlTuQKBgQDo3odirXTs3pSPP9sX\nY/kqfFs9wzFUN5gB9P/SC8BCTrvr/CzEuJE69jwmtYpgHZsDTGJixBhkRpsfSGRr\nw6/j/tsBgbA/tzF/y2Ub6eWUp8PLLPynj5Uvr0hdaNeia4r1yUsz6ssBlwwrTpXd\n0HoyQIvyTeq2gGT9nOFpA0FVmQKBgQDDiD1YmpClQadh3+TCT2yjQyEizdk50lfC\nCLDgnZelxgatgFl7a7q6AEblKkFbP4zTuxQclBkmyrTeyie/DVjttndun6LjdcVq\nL/JFHWOyskV5DobEHUWBk+Qc52jZn3Zj4YhLLfcep8U2nKzzQADy0lXuRKFamyq+\nrLHZlg97vwKBgQDbGMvult7FImJKKT1c044SYDCEestFvozBgp7TJIU+nc+Hp5sD\nd9gEzronfXT1G8XGI68J2BBPAHNgyn7ZOaOa8yVhVIDcYeMrptW5nqaH6BR6bBhH\nGvu1gsimQkdoJKD4weyEq2tXUqN7d5PfwA/Iihxh3Ndx4HmkeF9Iq2xkOQKBgQCb\nHf7ExsHPSBlYjPz2pXmiv0OPT8xvkY3rMWfYmUzPxxxPEg5q2hjlLAkSDgaRNAYt\nhjE7RsX5P0Bjqe4EI7uTwXhX+y6G0kxNpEHHULxh7AkvMzX4aNxWIpQJ1g8Y7edG\n74lnUszDtga+/2Y5B2J5QCHJhwqWTZiIcYoZ+nDIEwKBgC4TAyVylpRUidziQZoo\nfrj7mfstPkLVIwyKzHoKe5CaxwiMxxfSvFeSqrLnsnsiPwgSt2oZ5Mh+mJNJzE8V\nZgmZV/Ps7lJfm4ktNwMC8BLGjIHLBHViI5vJb0NriJL6Mhk537rwKKdg92uL8Znw\nxqQVEPRjix3EILMTG+ptkC88\n-----END PRIVATE KEY-----\n",
+  "client_email": "basketball-player-development@basketballtrackerapp.iam.gserviceaccount.com",
+  "client_id": "112788939222840886457",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/basketball-player-development%40basketballtrackerapp.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

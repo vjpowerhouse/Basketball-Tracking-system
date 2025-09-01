@@ -11,9 +11,13 @@ import base64
 # Google Sheets Setup
 # -------------------------------
 scope = ["https://spreadsheets.google.com/feeds","https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
+
+# Update this line with your JSON filename
+creds = ServiceAccountCredentials.from_json_keyfile_name(
+    "basketballtrackerapp-9e471979a8bc.json", scope
+)
 client = gspread.authorize(creds)
-sheet = client.open("Basketball Tracker")  # Change to your Google Sheet name
+sheet = client.open("Basketball Tracker")  # Name of your Google Sheet
 
 # -------------------------------
 # Streamlit Page Setup

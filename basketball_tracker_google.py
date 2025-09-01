@@ -1,187 +1,126 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-from datetime import datetime
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from gspread_dataframe import set_with_dataframe, get_as_dataframe
-import base64
+from google.oauth2.service_account import Credentials
+from datetime import datetime
+import matplotlib.pyplot as plt
 
-# -------------------------------
-# Google Sheets Setup
-# -------------------------------
-scope = ["https://spreadsheets.google.com/feeds","https://www.googleapis.com/auth/drive"]
+# ------------------------------------------------
+# 1. Authenticate with Google Service Account
+# ------------------------------------------------
+SERVICE_ACCOUNT_FILE = "basketballtrackerapp-9e471979a8bc.json"
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets",
+          "https://www.googleapis.com/auth/drive"]
 
-# Update this line with your JSON filename
-creds = ServiceAccountCredentials.from_json_keyfile_name(
-    "basketballtrackerapp-9e471979a8bc.json", scope
-)
+creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 client = gspread.authorize(creds)
-sheet = client.open("Basketball Tracker")  # Name of your Google Sheet
 
-# -------------------------------
-# Streamlit Page Setup
-# -------------------------------
-st.set_page_config(page_title="Basketball Tracker", layout="wide")
-
-# -------------------------------
-# Sidebar: Images
-# -------------------------------
-st.sidebar.subheader("Upload Images (optional)")
-kobe_file = st.sidebar.file_uploader("Kobe Bryant Image", type=["png","jpg"])
-logo_file = st.sidebar.file_uploader("Basketball Logo", type=["png","jpg"])
-court_file = st.sidebar.file_uploader("Court Background", type=["png","jpg"])
-court_bg_base64 = None
-if court_file:
-    court_bg_base64 = base64.b64encode(court_file.read()).decode()
-
-if kobe_file:
-    st.image(kobe_file, width=120)
-
-# -------------------------------
-# Header & Quote
-# -------------------------------
-st.markdown("""
-<h1 style="text-align:center;">🏀 Basketball Performance Tracker</h1>
-<h3 style="text-align:center;font-style:italic;color:#555;">
-"The most important thing is you must put everybody on notice that you're here and you are for real." – Kobe Bryant
-</h3>
-""", unsafe_allow_html=True)
-
-# -------------------------------
-# User Login / Name
-# -------------------------------
-user_name = st.text_input("Enter Player Name:", value="Player1")
-if not user_name:
-    st.warning("Please enter your name to continue.")
+# ------------------------------------------------
+# 2. Open (or create) Google Sheet
+# ------------------------------------------------
+SHEET_NAME = "Basketball Tracker"
+try:
+    sheet = client.open(SHEET_NAME).sheet1
+except Exception as e:
+    st.error(f"Could not open Google Sheet: {e}")
     st.stop()
 
-# -------------------------------
-# Worksheet per user
-# -------------------------------
-try:
-    ws = sheet.worksheet(user_name)
-except gspread.exceptions.WorksheetNotFound:
-    ws = sheet.add_worksheet(title=user_name, rows="1000", cols="20")
+# ------------------------------------------------
+# 3. Helper: load existing data into DataFrame
+# ------------------------------------------------
+def load_data():
+    records = sheet.get_all_records()
+    return pd.DataFrame(records)
 
-# -------------------------------
-# Initialize session state
-# -------------------------------
-activities = ["Games", "Shooting Practice", "Conditioning", "Dribbling"]
-for act in activities:
-    if act not in st.session_state:
-        st.session_state[act] = []
+# ------------------------------------------------
+# 4. Streamlit UI
+# ------------------------------------------------
+st.title("🏀 Basketball Training & Game Tracker")
 
-# Load existing data from Google Sheet
-df_existing = get_as_dataframe(ws, evaluate_formulas=True, header=0)
-if df_existing is not None and not df_existing.empty:
-    for act in activities:
-        st.session_state[act] = df_existing[df_existing['Activity']==act].to_dict('records')
+menu = ["Game Stats", "Shooting Drills", "Dribbling Drills", "View Data & Trends"]
+choice = st.sidebar.selectbox("Choose Section", menu)
 
-# -------------------------------
-# Activity Selection
-# -------------------------------
-activity = st.radio("Select Activity to Log:", activities)
-
-# -------------------------------
-# Data Entry Forms
-# -------------------------------
-if activity == "Games":
-    st.subheader("📊 Games Stats Entry")
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        points = st.number_input("Points", min_value=0)
-        assists = st.number_input("Assists", min_value=0)
-    with col2:
-        turnovers = st.number_input("Turnovers", min_value=0)
-        steals = st.number_input("Steals", min_value=0)
-    with col3:
-        threes_made = st.number_input("3P Made", min_value=0)
-    with col4:
-        twos_made = st.number_input("2P Made", min_value=0)
+# ------------------------------------------------
+# 5. Game Stats
+# ------------------------------------------------
+if choice == "Game Stats":
+    st.header("📊 Game Stats")
+    date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    opponent = st.text_input("Opponent")
+    points = st.number_input("Points", min_value=0, step=1)
+    rebounds = st.number_input("Rebounds", min_value=0, step=1)
+    assists = st.number_input("Assists", min_value=0, step=1)
 
     if st.button("Save Game Stats"):
-        row = {"Activity":"Games", "DateTime":datetime.now(),
-               "Points":points, "Assists":assists,
-               "Turnovers":turnovers, "Steals":steals,
-               "3P Made":threes_made, "2P Made":twos_made}
-        st.session_state["Games"].append(row)
+        sheet.append_row(
+            ["Game", date, opponent, points, rebounds, assists]
+        )
         st.success("✅ Game stats saved!")
 
-elif activity == "Shooting Practice":
-    st.subheader("🏀 Shooting Practice Entry")
-    col1, col2 = st.columns(2)
-    with col1:
-        s21_m = st.number_input("21 Drill Minutes", min_value=0)
-        s21_s = st.number_input("21 Drill Seconds", min_value=0)
-        layups_m = st.number_input("10 Layups Minutes", min_value=0)
-        layups_s = st.number_input("10 Layups Seconds", min_value=0)
-    with col2:
-        threes_made = st.number_input("3P Made", min_value=0)
-        twos_made = st.number_input("2P Made", min_value=0)
+# ------------------------------------------------
+# 6. Shooting Drills
+# ------------------------------------------------
+elif choice == "Shooting Drills":
+    st.header("🎯 Shooting Drills")
+    date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    location = st.selectbox("Shot Location", ["Corner 3", "Wing 3", "Top of Key", "Midrange", "Layup"])
+    makes = st.number_input("Shots Made", min_value=0, step=1)
+    attempts = st.number_input("Shots Attempted", min_value=0, step=1)
 
-    if st.button("Save Shooting Practice"):
-        row = {"Activity":"Shooting Practice", "DateTime":datetime.now(),
-               "21 Drill Time (s)":s21_m*60+s21_s,
-               "10 Layups Time (s)":layups_m*60+layups_s,
-               "3P Made":threes_made, "2P Made":twos_made}
-        st.session_state["Shooting Practice"].append(row)
-        st.success("✅ Shooting practice saved!")
+    if st.button("Save Shooting Drill"):
+        sheet.append_row(
+            ["Shooting", date, location, makes, attempts]
+        )
+        st.success("✅ Shooting drill saved!")
 
-elif activity == "Conditioning":
-    st.subheader("💪 Conditioning Entry")
-    drill17_m = st.number_input("17s Drill Minutes", min_value=0)
-    drill17_s = st.number_input("17s Drill Seconds", min_value=0)
-    suicide1_m = st.number_input("1 Suicide Minutes", min_value=0)
-    suicide1_s = st.number_input("1 Suicide Seconds", min_value=0)
-    slides = st.number_input("Defensive Slides in 30s", min_value=0)
+# ------------------------------------------------
+# 7. Dribbling Drills
+# ------------------------------------------------
+elif choice == "Dribbling Drills":
+    st.header("🤹 Dribbling Drills")
+    date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    one_ball = st.number_input("Minutes – 1 Ball Dribble", min_value=0, step=1)
+    two_ball = st.number_input("Minutes – 2 Ball Dribble", min_value=0, step=1)
 
-    if st.button("Save Conditioning"):
-        row = {"Activity":"Conditioning","DateTime":datetime.now(),
-               "17s Drill Time (s)":drill17_m*60+drill17_s,
-               "1 Suicide Time (s)":suicide1_m*60+suicide1_s,
-               "Defensive Slides":slides}
-        st.session_state["Conditioning"].append(row)
-        st.success("✅ Conditioning saved!")
+    if st.button("Save Dribbling Drill"):
+        sheet.append_row(
+            ["Dribbling", date, one_ball, two_ball]
+        )
+        st.success("✅ Dribbling drill saved!")
 
-elif activity == "Dribbling":
-    st.subheader("🤾 Dribbling Entry")
-    two_ball = st.number_input("2-Ball Dribbles (minutes)", min_value=0)
-    one_ball = st.number_input("1-Ball Dribbles (minutes)", min_value=0)
-    if st.button("Save Dribbling"):
-        row = {"Activity":"Dribbling","DateTime":datetime.now(),
-               "2-Ball Minutes":two_ball,"1-Ball Minutes":one_ball}
-        st.session_state["Dribbling"].append(row)
-        st.success("✅ Dribbling saved!")
+# ------------------------------------------------
+# 8. View Data & Trends
+# ------------------------------------------------
+elif choice == "View Data & Trends":
+    st.header("📈 Training & Game Trends")
 
-# -------------------------------
-# Save to Google Sheet
-# -------------------------------
-def save_to_sheet():
-    all_data = []
-    for act in activities:
-        for row in st.session_state[act]:
-            all_data.append(row)
-    df = pd.DataFrame(all_data)
-    if not df.empty:
-        set_with_dataframe(ws, df)
+    df = load_data()
+    if df.empty:
+        st.warning("No data yet!")
+    else:
+        st.dataframe(df)
 
-save_to_sheet()
+        # Basic shooting % trend
+        shooting_df = df[df.iloc[:,0] == "Shooting"].copy()
+        if not shooting_df.empty:
+            shooting_df["FG%"] = shooting_df.iloc[:,3] / shooting_df.iloc[:,4] * 100
+            fig, ax = plt.subplots()
+            shooting_df.plot(x=1, y="FG%", ax=ax, marker="o", legend=False)
+            plt.title("Shooting % Over Time")
+            plt.ylabel("Field Goal %")
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
 
-# -------------------------------
-# Graphs
-# -------------------------------
-st.write("## Performance Graphs")
-def show_graphs(data, activity_name):
-    if not data: 
-        st.info(f"No data for {activity_name} yet.") 
-        return
-    df = pd.DataFrame(data)
-    numeric_cols = [c for c in df.columns if df[c].dtype in ['int64','float64']]
-    for col in numeric_cols:
-        fig = px.line(df, x="DateTime", y=col, title=f"{activity_name} - {col}", markers=True)
-        st.plotly_chart(fig, use_container_width=True)
-
-for act in activities:
-    st.write(f"### {act} Metrics")
-    show_graphs(st.session_state[act], act)
+# ------------------------------------------------
+# 9. Backup Button
+# ------------------------------------------------
+st.sidebar.subheader("⚙️ Data Management")
+if st.sidebar.button("Backup Data (Download CSV)"):
+    df = load_data()
+    csv = df.to_csv(index=False).encode("utf-8")
+    st.sidebar.download_button(
+        label="Download Backup CSV",
+        data=csv,
+        file_name="basketball_backup.csv",
+        mime="text/csv",
+    )

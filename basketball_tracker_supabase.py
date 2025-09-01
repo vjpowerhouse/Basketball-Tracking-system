@@ -1,46 +1,64 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from supabase import create_client
 from datetime import datetime
 import uuid
+from supabase import create_client, Client
 
 # -------------------------------
-# Supabase configuration
+# Supabase setup
 # -------------------------------
-SUPABASE_URL = "https://yegkoltoaqzfjyzbhdrc.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllZ2tvbHRvYXF6Zmp5emJoZHJjIiwicm9sIjoibm9uIiwiaWF0IjoxNzU2Njk2MTUyLCJleHAiOjIwNzIyNzIxNTJ9.dumcEar9kCvFQMRemqq0-PB4P1QYZSRm1MdFKGfwwcg"
+with open("supabase_key.txt") as f:
+    lines = f.read().splitlines()
+SUPABASE_URL = lines[0]
+SUPABASE_KEY = lines[1]
 
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # -------------------------------
-# Streamlit page config
+# Page config
 # -------------------------------
 st.set_page_config(page_title="Basketball Tracker", layout="wide")
-st.title("🏀 Basketball Performance Tracker")
 
 # -------------------------------
-# Initialize user session
+# Generate unique user_id
 # -------------------------------
 if "user_id" not in st.session_state:
     st.session_state.user_id = str(uuid.uuid4())
 
 # -------------------------------
+# Sidebar: Upload optional images
+# -------------------------------
+st.sidebar.subheader("Upload Images (optional)")
+kobe_file = st.sidebar.file_uploader("Kobe Bryant Image", type=["png","jpg"])
+logo_file = st.sidebar.file_uploader("Basketball Logo", type=["png","jpg"])
+court_file = st.sidebar.file_uploader("Court Background", type=["png","jpg"])
+court_bg_base64 = None
+if court_file:
+    import base64
+    court_bg_base64 = base64.b64encode(court_file.read()).decode()
+
+# -------------------------------
+# Header
+# -------------------------------
+if kobe_file:
+    st.image(kobe_file, width=120)
+
+st.markdown("""
+<h1 style="text-align:center;">🏀 Basketball Performance Tracker</h1>
+<h3 style="text-align:center;font-style:italic;color:#555;">
+"The most important thing is you must put everybody on notice that you're here and you are for real." – Kobe Bryant
+</h3>
+""", unsafe_allow_html=True)
+
+# -------------------------------
 # Activity selection
 # -------------------------------
-activity = st.radio("Select Activity:", ["Games Stats", "Shooting Practice", "Conditioning", "Dribbling"])
+activity = st.radio("Select Activity to Log:", ["Games Stats", "Shooting Practice", "Conditioning", "Dribbling"])
 
 # -------------------------------
-# Data entry
+# Data entry forms
 # -------------------------------
-
-def save_to_supabase(data):
-    data["user_id"] = st.session_state.user_id
-    data["timestamp"] = datetime.now().isoformat()
-    supabase.table("user_stats").insert(data).execute()
-    st.success("✅ Data saved to Supabase!")
-
-# -------- Games Stats --------
 if activity == "Games Stats":
     st.subheader("📊 Games Stats Entry")
     col1, col2, col3, col4 = st.columns(4)
@@ -52,61 +70,59 @@ if activity == "Games Stats":
         steals = st.number_input("Steals", min_value=0)
     with col3:
         threes_made = st.number_input("3P Made", min_value=0)
-        threes_attempt = st.number_input("3P Attempt", min_value=0)
     with col4:
         twos_made = st.number_input("2P Made", min_value=0)
-        twos_attempt = st.number_input("2P Attempt", min_value=0)
 
     if st.button("Save Game Stats"):
-        save_to_supabase({
+        record = {
+            "user_id": st.session_state.user_id,
             "activity": "Games",
-            "points": points,
-            "assists": assists,
-            "turnovers": turnovers,
-            "steals": steals,
-            "threes_made": threes_made,
-            "twos_made": twos_made,
-            "three_pct": round(threes_made/threes_attempt*100,2) if threes_attempt else 0,
-            "two_pct": round(twos_made/twos_attempt*100,2) if twos_attempt else 0
-        })
+            "timestamp": datetime.now(),
+            "Points": points,
+            "Assists": assists,
+            "Turnovers": turnovers,
+            "Steals": steals,
+            "3P Made": threes_made,
+            "2P Made": twos_made
+        }
+        supabase.table("user_stats").insert(record).execute()
+        st.success("✅ Game stats saved!")
 
-# -------- Shooting Practice --------
 elif activity == "Shooting Practice":
     st.subheader("🏀 Shooting Practice Entry")
     col1, col2 = st.columns(2)
     with col1:
-        drill_21_m = st.number_input("21 Drill - Minutes", min_value=0)
-        drill_21_s = st.number_input("21 Drill - Seconds", min_value=0)
+        s21_m = st.number_input("21-points drill - Minutes", min_value=0)
+        s21_s = st.number_input("21-points drill - Seconds", min_value=0)
         layups_m = st.number_input("10 Layups - Minutes", min_value=0)
         layups_s = st.number_input("10 Layups - Seconds", min_value=0)
-        around_key = st.number_input("Around the Key Shots", min_value=0)
-        three_4min = st.number_input("3P in 4 min", min_value=0)
+        around_key = st.number_input("Around the Key Shots in 4 mins", min_value=0)
+        threes_4min = st.number_input("3P in 4 mins", min_value=0)
     with col2:
         threes_made = st.number_input("3P Made", min_value=0)
-        threes_attempt = st.number_input("3P Attempt", min_value=0)
         twos_made = st.number_input("2P Made", min_value=0)
-        twos_attempt = st.number_input("2P Attempt", min_value=0)
 
     if st.button("Save Shooting Practice"):
-        save_to_supabase({
+        record = {
+            "user_id": st.session_state.user_id,
             "activity": "Shooting",
-            "drill_21_time": drill_21_m*60+drill_21_s,
-            "layups_time": layups_m*60+layups_s,
-            "around_key": around_key,
-            "three_4min": three_4min,
-            "threes_made": threes_made,
-            "twos_made": twos_made,
-            "three_pct": round(threes_made/threes_attempt*100,2) if threes_attempt else 0,
-            "two_pct": round(twos_made/twos_attempt*100,2) if twos_attempt else 0
-        })
+            "timestamp": datetime.now(),
+            "21 Drill Time (s)": s21_m*60 + s21_s,
+            "10 Layups Time (s)": layups_m*60 + layups_s,
+            "Around Key": around_key,
+            "3P in 4min": threes_4min,
+            "3P Made": threes_made,
+            "2P Made": twos_made
+        }
+        supabase.table("user_stats").insert(record).execute()
+        st.success("✅ Shooting practice saved!")
 
-# -------- Conditioning --------
 elif activity == "Conditioning":
     st.subheader("💪 Conditioning Entry")
     col1, col2, col3 = st.columns(3)
     with col1:
-        drill_17_m = st.number_input("17s Drill - Minutes", min_value=0)
-        drill_17_s = st.number_input("17s Drill - Seconds", min_value=0)
+        drill17_m = st.number_input("17s Drill - Minutes", min_value=0)
+        drill17_s = st.number_input("17s Drill - Seconds", min_value=0)
         suicide1_m = st.number_input("1 Suicide - Minutes", min_value=0)
         suicide1_s = st.number_input("1 Suicide - Seconds", min_value=0)
     with col2:
@@ -116,17 +132,20 @@ elif activity == "Conditioning":
         slides = st.number_input("Defensive Slides in 30s", min_value=0)
 
     if st.button("Save Conditioning"):
-        save_to_supabase({
+        record = {
+            "user_id": st.session_state.user_id,
             "activity": "Conditioning",
-            "drill_17_time": drill_17_m*60 + drill_17_s,
-            "suicide1_time": suicide1_m*60 + suicide1_s,
-            "suicide5_time": suicide5_m*60 + suicide5_s,
-            "defensive_slides": slides
-        })
+            "timestamp": datetime.now(),
+            "17s Drill Time (s)": drill17_m*60 + drill17_s,
+            "1 Suicide Time (s)": suicide1_m*60 + suicide1_s,
+            "5 Suicides Time (s)": suicide5_m*60 + suicide5_s,
+            "Defensive Slides": slides
+        }
+        supabase.table("user_stats").insert(record).execute()
+        st.success("✅ Conditioning data saved!")
 
-# -------- Dribbling --------
 elif activity == "Dribbling":
-    st.subheader("🤾 Dribbling Entry")
+    st.subheader("🏀 Dribbling Entry")
     col1, col2 = st.columns(2)
     with col1:
         one_ball = st.number_input("1 Ball Dribble - Minutes", min_value=0)
@@ -134,27 +153,46 @@ elif activity == "Dribbling":
         two_ball = st.number_input("2 Ball Dribble - Minutes", min_value=0)
 
     if st.button("Save Dribbling"):
-        save_to_supabase({
+        record = {
+            "user_id": st.session_state.user_id,
             "activity": "Dribbling",
-            "dribble_1ball_minutes": one_ball,
-            "dribble_2ball_minutes": two_ball
-        })
+            "timestamp": datetime.now(),
+            "1 Ball Minutes": one_ball,
+            "2 Ball Minutes": two_ball
+        }
+        supabase.table("user_stats").insert(record).execute()
+        st.success("✅ Dribbling data saved!")
 
 # -------------------------------
-# Show graphs
+# Graph display
 # -------------------------------
-st.header("📈 Your Metrics")
-
 def show_graphs(activity_filter):
     res = supabase.table("user_stats").select("*").eq("user_id", st.session_state.user_id).eq("activity", activity_filter).execute()
-    data = pd.DataFrame(res.data)
-    if data.empty:
+    df = pd.DataFrame(res.data)
+    if df.empty:
         st.info(f"No data for {activity_filter} yet.")
         return
-    for col in data.columns:
-        if col not in ["id", "user_id", "activity", "timestamp"] and pd.api.types.is_numeric_dtype(data[col]):
-            fig = px.line(data, x="timestamp", y=col, title=f"{activity_filter} - {col}", markers=True)
-            st.plotly_chart(fig, use_container_width=True)
+    st.subheader(f"{activity_filter} Metrics")
+    numeric_cols = df.select_dtypes(include=['int64','float64']).columns
+    for col in numeric_cols:
+        fig = px.line(df, x="timestamp", y=col, title=f"{activity_filter} - {col}", markers=True)
+        if court_bg_base64:
+            fig.update_layout(
+                images=[dict(
+                    source=f"data:image/png;base64,{court_bg_base64}",
+                    xref="paper", yref="paper",
+                    x=0, y=1,
+                    sizex=1, sizey=1,
+                    xanchor="left",
+                    yanchor="top",
+                    layer="below",
+                    opacity=0.2
+                )],
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)"
+            )
+        st.plotly_chart(fig, use_container_width=True)
 
+# Show graphs for all activities
 for act in ["Games", "Shooting", "Conditioning", "Dribbling"]:
     show_graphs(act)

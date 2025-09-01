@@ -1,6 +1,5 @@
-streamlit
-pandas
-plotly
-xlsxwriter
-supabase
-openpyxl
+streamlit>=1.26
+pandas>=2.1
+plotly>=5.20
+supabase>=2.3.1
+openpyxl>=3.1

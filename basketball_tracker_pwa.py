@@ -1,73 +1,64 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from io import BytesIO
-import base64
+from datetime import datetime
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from gspread_dataframe import set_with_dataframe, get_as_dataframe
 
+# -------------------------------
+# Google Sheets Setup
+# -------------------------------
+scope = ["https://spreadsheets.google.com/feeds","https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
+client = gspread.authorize(creds)
+sheet = client.open("Basketball Tracker")  # Your sheet name
+
+# -------------------------------
+# Streamlit Setup
+# -------------------------------
 st.set_page_config(page_title="Basketball Tracker", layout="wide")
+st.title("🏀 Basketball Performance Tracker")
 
 # -------------------------------
-# Sidebar: Image Uploads
+# User Login / Identification
 # -------------------------------
-st.sidebar.subheader("Upload Images (optional)")
-kobe_file = st.sidebar.file_uploader("Kobe Bryant Image", type=["png","jpg"])
-logo_file = st.sidebar.file_uploader("Basketball Logo", type=["png","jpg"])
-court_file = st.sidebar.file_uploader("Court Background", type=["png","jpg"])
-court_bg_base64 = None
-if court_file:
-    court_bg_base64 = base64.b64encode(court_file.read()).decode()
+user_name = st.text_input("Enter Player Name:", value="Player1")
+if not user_name:
+    st.warning("Please enter your name to continue.")
+    st.stop()
 
 # -------------------------------
-# Header
+# Worksheet per user
 # -------------------------------
-if kobe_file:
-    st.image(kobe_file, width=120)
-
-st.markdown("""
-<h1 style="text-align:center;">🏀 Basketball Performance Tracker</h1>
-<h3 style="text-align:center;font-style:italic;color:#555;">
-"The most important thing is you must put everybody on notice that you're here and you are for real." – Kobe Bryant
-</h3>
-""", unsafe_allow_html=True)
+try:
+    ws = sheet.worksheet(user_name)
+except gspread.exceptions.WorksheetNotFound:
+    ws = sheet.add_worksheet(title=user_name, rows="1000", cols="20")
 
 # -------------------------------
 # Initialize session state
 # -------------------------------
-for key in ["games","shooting","conditioning","dribbling"]:
-    if key not in st.session_state:
-        st.session_state[key] = []
+activities = ["Games", "Shooting Practice", "Conditioning", "Dribbling"]
+for act in activities:
+    if act not in st.session_state:
+        st.session_state[act] = []
 
-# -------------------------------
-# Backup / Import
-# -------------------------------
-st.sidebar.subheader("Backup / Import")
-import_file = st.sidebar.file_uploader("📂 Import Backup", type=["xlsx"])
-if import_file:
-    xls = pd.ExcelFile(import_file)
-    if "Games" in xls.sheet_names:
-        st.session_state.games = pd.read_excel(xls, sheet_name="Games").to_dict('records')
-    if "Shooting Practice" in xls.sheet_names:
-        st.session_state.shooting = pd.read_excel(xls, sheet_name="Shooting Practice").to_dict('records')
-    if "Conditioning" in xls.sheet_names:
-        st.session_state.conditioning = pd.read_excel(xls, sheet_name="Conditioning").to_dict('records')
-    if "Dribbling Practice" in xls.sheet_names:
-        st.session_state.dribbling = pd.read_excel(xls, sheet_name="Dribbling Practice").to_dict('records')
-    st.success("✅ Backup imported successfully!")
+# Load existing data from Google Sheet
+for act in activities:
+    df_existing = get_as_dataframe(ws, evaluate_formulas=True, header=0)
+    if df_existing is not None and not df_existing.empty:
+        st.session_state[act] = df_existing[df_existing['Activity']==act].copy()
 
 # -------------------------------
 # Activity selection
 # -------------------------------
-activity = st.radio("Select Activity to Log:", [
-    "Games Stats", 
-    "Shooting Practice", 
-    "Conditioning", 
-    "Dribbling Practice"
-])
+activity = st.radio("Select Activity to Log:", activities)
 
 # -------------------------------
 # Data Entry Forms
 # -------------------------------
-if activity == "Games Stats":
+if activity == "Games":
     st.subheader("📊 Games Stats Entry")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -80,141 +71,107 @@ if activity == "Games Stats":
         threes_made = st.number_input("3P Made", min_value=0)
     with col4:
         twos_made = st.number_input("2P Made", min_value=0)
+
     if st.button("Save Game Stats"):
-        st.session_state.games.append({
+        row = {
+            "Activity": "Games",
+            "DateTime": datetime.now(),
             "Points": points,
             "Assists": assists,
             "Turnovers": turnovers,
             "Steals": steals,
             "3P Made": threes_made,
-            "2P Made": twos_made,
-            "3P %": round(threes_made / (threes_made+0.0001) * 100, 2),  # avoid div0
-            "2P %": round(twos_made / (twos_made+0.0001) * 100, 2)
-        })
+            "2P Made": twos_made
+        }
+        st.session_state["Games"].append(row)
         st.success("✅ Game stats saved!")
 
 elif activity == "Shooting Practice":
     st.subheader("🏀 Shooting Practice Entry")
     col1, col2 = st.columns(2)
     with col1:
-        s21_m = st.number_input("21-points drill - Minutes", min_value=0)
-        s21_s = st.number_input("21-points drill - Seconds", min_value=0)
-        layups_m = st.number_input("10 Layups - Minutes", min_value=0)
-        layups_s = st.number_input("10 Layups - Seconds", min_value=0)
-        around_key = st.number_input("Around the Key Shots in 4 mins", min_value=0)
-        threes_4min = st.number_input("3P in 4 mins", min_value=0)
+        s21_m = st.number_input("21 Drill Minutes", min_value=0)
+        s21_s = st.number_input("21 Drill Seconds", min_value=0)
+        layups_m = st.number_input("10 Layups Minutes", min_value=0)
+        layups_s = st.number_input("10 Layups Seconds", min_value=0)
     with col2:
         threes_made = st.number_input("3P Made", min_value=0)
         twos_made = st.number_input("2P Made", min_value=0)
+
     if st.button("Save Shooting Practice"):
-        st.session_state.shooting.append({
+        row = {
+            "Activity": "Shooting Practice",
+            "DateTime": datetime.now(),
             "21 Drill Time (s)": s21_m*60 + s21_s,
             "10 Layups Time (s)": layups_m*60 + layups_s,
-            "Around Key": around_key,
-            "3P in 4min": threes_4min,
             "3P Made": threes_made,
-            "2P Made": twos_made,
-            "3P %": round(threes_made / (threes_made+0.0001) * 100, 2),
-            "2P %": round(twos_made / (twos_made+0.0001) * 100, 2)
-        })
+            "2P Made": twos_made
+        }
+        st.session_state["Shooting Practice"].append(row)
         st.success("✅ Shooting practice saved!")
 
 elif activity == "Conditioning":
     st.subheader("💪 Conditioning Entry")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        drill17_m = st.number_input("17s Drill - Minutes", min_value=0)
-        drill17_s = st.number_input("17s Drill - Seconds", min_value=0)
-        suicide1_m = st.number_input("1 Suicide - Minutes", min_value=0)
-        suicide1_s = st.number_input("1 Suicide - Seconds", min_value=0)
-    with col2:
-        suicide5_m = st.number_input("5 Suicides - Minutes", min_value=0)
-        suicide5_s = st.number_input("5 Suicides - Seconds", min_value=0)
-    with col3:
-        slides = st.number_input("Defensive Slides in 30s", min_value=0)
+    drill17_m = st.number_input("17s Drill Minutes", min_value=0)
+    drill17_s = st.number_input("17s Drill Seconds", min_value=0)
+    suicide1_m = st.number_input("1 Suicide Minutes", min_value=0)
+    suicide1_s = st.number_input("1 Suicide Seconds", min_value=0)
+    slides = st.number_input("Defensive Slides in 30s", min_value=0)
+
     if st.button("Save Conditioning"):
-        st.session_state.conditioning.append({
+        row = {
+            "Activity": "Conditioning",
+            "DateTime": datetime.now(),
             "17s Drill Time (s)": drill17_m*60 + drill17_s,
             "1 Suicide Time (s)": suicide1_m*60 + suicide1_s,
-            "5 Suicides Time (s)": suicide5_m*60 + suicide5_s,
             "Defensive Slides": slides
-        })
+        }
+        st.session_state["Conditioning"].append(row)
         st.success("✅ Conditioning data saved!")
 
-elif activity == "Dribbling Practice":
-    st.subheader("🤹 Dribbling Practice Entry")
-    col1, col2 = st.columns(2)
-    with col1:
-        two_ball = st.number_input("2-ball dribbles (minutes)", min_value=0)
-    with col2:
-        one_ball = st.number_input("1-ball dribbles (minutes)", min_value=0)
-    if st.button("Save Dribbling Practice"):
-        st.session_state.dribbling.append({
-            "2-ball Minutes": two_ball,
-            "1-ball Minutes": one_ball
-        })
-        st.success("✅ Dribbling practice saved!")
+elif activity == "Dribbling":
+    st.subheader("🤾 Dribbling Entry")
+    two_ball = st.number_input("2-Ball Dribbles (minutes)", min_value=0)
+    one_ball = st.number_input("1-Ball Dribbles (minutes)", min_value=0)
+    if st.button("Save Dribbling"):
+        row = {
+            "Activity": "Dribbling",
+            "DateTime": datetime.now(),
+            "2-Ball Minutes": two_ball,
+            "1-Ball Minutes": one_ball
+        }
+        st.session_state["Dribbling"].append(row)
+        st.success("✅ Dribbling saved!")
 
 # -------------------------------
-# Export / Backup Function
+# Function to Save to Google Sheet
 # -------------------------------
-def export_to_excel():
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        if st.session_state.games:
-            pd.DataFrame(st.session_state.games).to_excel(writer, index=False, sheet_name="Games")
-        if st.session_state.shooting:
-            pd.DataFrame(st.session_state.shooting).to_excel(writer, index=False, sheet_name="Shooting Practice")
-        if st.session_state.conditioning:
-            pd.DataFrame(st.session_state.conditioning).to_excel(writer, index=False, sheet_name="Conditioning")
-        if st.session_state.dribbling:
-            pd.DataFrame(st.session_state.dribbling).to_excel(writer, index=False, sheet_name="Dribbling Practice")
-    return output.getvalue()
+def save_to_sheet():
+    all_data = []
+    for act in activities:
+        for row in st.session_state[act]:
+            all_data.append(row)
+    df = pd.DataFrame(all_data)
+    if not df.empty:
+        set_with_dataframe(ws, df)
 
-st.download_button(
-    label="💾 Backup Data",
-    data=export_to_excel(),
-    file_name="basketball_backup.xlsx"
-)
+# Save after each interaction
+save_to_sheet()
 
 # -------------------------------
-# Graph Section
+# Graphs
 # -------------------------------
-def show_graphs(data, activity_name, exclude_columns=None):
-    if not data:
-        st.info(f"No data for {activity_name} yet.")
+st.write("## Performance Graphs")
+def show_graphs(data, activity_name):
+    if not data: 
+        st.info(f"No data for {activity_name} yet.") 
         return
     df = pd.DataFrame(data)
     for col in df.columns:
-        if exclude_columns and col in exclude_columns:
-            continue
-        if df[col].dtype in ['int64','float64']:
-            fig = px.line(df, y=col, title=f"{activity_name} - {col}", markers=True)
-            if court_bg_base64:
-                fig.update_layout(
-                    images=[dict(
-                        source=f"data:image/png;base64,{court_bg_base64}",
-                        xref="paper", yref="paper",
-                        x=0, y=1,
-                        sizex=1, sizey=1,
-                        xanchor="left",
-                        yanchor="top",
-                        layer="below",
-                        opacity=0.2
-                    )],
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    paper_bgcolor="rgba(0,0,0,0)"
-                )
+        if df[col].dtype in ['int64', 'float64'] and col not in ["Points", "Assists", "3P Made", "2P Made", "DateTime"]:
+            fig = px.line(df, x="DateTime", y=col, title=f"{activity_name} - {col}", markers=True)
             st.plotly_chart(fig, use_container_width=True)
 
-st.write("### Games Metrics")
-show_graphs(st.session_state.games, "Games", exclude_columns=["2P Attempt","3P Attempt"])
-
-st.write("### Shooting Practice Metrics")
-show_graphs(st.session_state.shooting, "Shooting Practice", exclude_columns=["2P Attempt","3P Attempt"])
-
-st.write("### Conditioning Metrics")
-show_graphs(st.session_state.conditioning, "Conditioning")
-
-st.write("### Dribbling Metrics")
-show_graphs(st.session_state.dribbling, "Dribbling Practice")
+for act in activities:
+    st.write(f"### {act} Metrics")
+    show_graphs(st.session_state[act], act)

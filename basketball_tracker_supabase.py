@@ -1,49 +1,32 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from supabase import create_client, Client
 from datetime import datetime
-import base64
+from supabase import create_client, Client
+
+# -------------------------------
+# Supabase credentials
+# -------------------------------
+SUPABASE_URL = "https://yegkoltoaqzfjyzbhdrc.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."  # use your anon/public key
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # -------------------------------
 # Streamlit page config
 # -------------------------------
 st.set_page_config(page_title="Basketball Tracker", layout="wide")
+st.title("🏀 Basketball Performance Tracker")
 
 # -------------------------------
-# Supabase config
+# Initialize session state
 # -------------------------------
-SUPABASE_URL = "https://yegkoltoaqzfjyzbhdrc.supabase.co"  # Replace with your URL
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."  # Replace with anon/public key
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+if "user_id" not in st.session_state:
+    st.session_state.user_id = st.text_input("Enter your User ID", "")
 
-# -------------------------------
-# Sidebar: Images and User ID
-# -------------------------------
-st.sidebar.subheader("Upload Images (optional)")
-kobe_file = st.sidebar.file_uploader("Kobe Bryant Image", type=["png","jpg"])
-logo_file = st.sidebar.file_uploader("Basketball Logo", type=["png","jpg"])
-court_file = st.sidebar.file_uploader("Court Background", type=["png","jpg"])
-court_bg_base64 = None
-if court_file:
-    court_bg_base64 = base64.b64encode(court_file.read()).decode()
-
-st.sidebar.subheader("Enter User ID")
-if "user_id" not in st.session_state: st.session_state.user_id = ""
-st.session_state.user_id = st.sidebar.text_input("User ID", st.session_state.user_id)
-
-# -------------------------------
-# Header & Quote
-# -------------------------------
-if kobe_file:
-    st.image(kobe_file, width=120)
-
-st.markdown("""
-<h1 style="text-align:center;">🏀 Basketball Performance Tracker</h1>
-<h3 style="text-align:center;font-style:italic;color:#555;">
-"The most important thing is you must put everybody on notice that you're here and you are for real." – Kobe Bryant
-</h3>
-""", unsafe_allow_html=True)
+if "games" not in st.session_state: st.session_state.games = []
+if "shooting" not in st.session_state: st.session_state.shooting = []
+if "conditioning" not in st.session_state: st.session_state.conditioning = []
+if "dribbling" not in st.session_state: st.session_state.dribbling = []
 
 # -------------------------------
 # Activity selection
@@ -51,17 +34,15 @@ st.markdown("""
 activity = st.radio("Select Activity to Log:", ["Games Stats", "Shooting Practice", "Conditioning", "Dribbling"])
 
 # -------------------------------
-# Save to Supabase function
+# Data Entry Forms
 # -------------------------------
-def save_to_supabase(activity_name, data_dict):
-    data_dict["user_id"] = st.session_state.user_id
-    data_dict["activity"] = activity_name
-    data_dict["timestamp"] = datetime.now().isoformat()
-    supabase.table("user_stats").insert(data_dict).execute()
+def save_to_supabase(activity_name, row_dict):
+    row_dict["user_id"] = st.session_state.user_id
+    row_dict["activity"] = activity_name
+    row_dict["timestamp"] = datetime.now().isoformat()
+    supabase.table("user_stats").insert(row_dict).execute()
 
-# -------------------------------
-# Activity forms
-# -------------------------------
+# ----------- Games Stats -----------
 if activity == "Games Stats":
     st.subheader("📊 Games Stats Entry")
     col1, col2, col3, col4 = st.columns(4)
@@ -73,20 +54,28 @@ if activity == "Games Stats":
         steals = st.number_input("Steals", min_value=0)
     with col3:
         threes_made = st.number_input("3P Made", min_value=0)
+        threes_attempt = st.number_input("3P Attempt", min_value=0)
     with col4:
         twos_made = st.number_input("2P Made", min_value=0)
+        twos_attempt = st.number_input("2P Attempt", min_value=0)
 
     if st.button("Save Game Stats"):
-        save_to_supabase("Games", {
+        row = {
             "Points": points,
             "Assists": assists,
             "Turnovers": turnovers,
             "Steals": steals,
             "3P Made": threes_made,
-            "2P Made": twos_made
-        })
+            "3P Attempt": threes_attempt,
+            "2P Made": twos_made,
+            "2P Attempt": twos_attempt,
+            "3P %": round(threes_made / threes_attempt * 100, 2) if threes_attempt else 0,
+            "2P %": round(twos_made / twos_attempt * 100, 2) if twos_attempt else 0
+        }
+        save_to_supabase("Games", row)
         st.success("✅ Game stats saved!")
 
+# ----------- Shooting Practice -----------
 elif activity == "Shooting Practice":
     st.subheader("🏀 Shooting Practice Entry")
     col1, col2 = st.columns(2)
@@ -102,16 +91,20 @@ elif activity == "Shooting Practice":
         twos_made = st.number_input("2P Made", min_value=0)
 
     if st.button("Save Shooting Practice"):
-        save_to_supabase("Shooting", {
+        row = {
             "21 Drill Time (s)": s21_m*60 + s21_s,
             "10 Layups Time (s)": layups_m*60 + layups_s,
             "Around Key": around_key,
             "3P in 4min": threes_4min,
             "3P Made": threes_made,
-            "2P Made": twos_made
-        })
+            "2P Made": twos_made,
+            "3P %": round(threes_made / (threes_made if threes_made else 1) * 100,2),
+            "2P %": round(twos_made / (twos_made if twos_made else 1) * 100,2)
+        }
+        save_to_supabase("Shooting", row)
         st.success("✅ Shooting practice saved!")
 
+# ----------- Conditioning -----------
 elif activity == "Conditioning":
     st.subheader("💪 Conditioning Entry")
     col1, col2, col3 = st.columns(3)
@@ -127,89 +120,89 @@ elif activity == "Conditioning":
         slides = st.number_input("Defensive Slides in 30s", min_value=0)
 
     if st.button("Save Conditioning"):
-        save_to_supabase("Conditioning", {
+        row = {
             "17s Drill Time (s)": drill17_m*60 + drill17_s,
             "1 Suicide Time (s)": suicide1_m*60 + suicide1_s,
             "5 Suicides Time (s)": suicide5_m*60 + suicide5_s,
             "Defensive Slides": slides
-        })
+        }
+        save_to_supabase("Conditioning", row)
         st.success("✅ Conditioning data saved!")
 
+# ----------- Dribbling -----------
 elif activity == "Dribbling":
     st.subheader("🤾 Dribbling Entry")
     col1, col2 = st.columns(2)
     with col1:
-        two_ball_mins = st.number_input("2 Ball Dribbles - Minutes", min_value=0)
+        one_ball = st.number_input("1-Ball Dribble Minutes", min_value=0)
     with col2:
-        one_ball_mins = st.number_input("1 Ball Dribbles - Minutes", min_value=0)
+        two_ball = st.number_input("2-Ball Dribble Minutes", min_value=0)
 
     if st.button("Save Dribbling"):
-        save_to_supabase("Dribbling", {
-            "2 Ball Dribbles (min)": two_ball_mins,
-            "1 Ball Dribbles (min)": one_ball_mins
-        })
+        row = {
+            "1-Ball Minutes": one_ball,
+            "2-Ball Minutes": two_ball
+        }
+        save_to_supabase("Dribbling", row)
         st.success("✅ Dribbling data saved!")
 
 # -------------------------------
-# Backup & Import
+# Backup / Import
 # -------------------------------
-st.write("## 💾 Backup & Import")
+st.subheader("💾 Backup / Restore")
 col1, col2 = st.columns(2)
 
+def export_user_data():
+    if not st.session_state.user_id:
+        return None
+    res = supabase.table("user_stats").select("*").eq("user_id", st.session_state.user_id).execute()
+    if not res.data:
+        return None
+    df = pd.DataFrame(res.data)
+    output = BytesIO()
+    df.to_excel(output, index=False, engine="openpyxl")
+    return output.getvalue()
+
 with col1:
-    if st.button("📥 Backup Data to Excel"):
-        if not st.session_state.user_id:
-            st.warning("Enter your username/ID first")
-        else:
-            res = supabase.table("user_stats").select("*").eq("user_id", st.session_state.user_id).execute()
-            if res.data:
-                df = pd.DataFrame(res.data)
-                with pd.ExcelWriter("temp.xlsx", engine='xlsxwriter') as writer:
-                    df.to_excel(writer, index=False)
-                with open("temp.xlsx", "rb") as f:
-                    st.download_button(
-                        label="Download Backup",
-                        data=f,
-                        file_name=f"{st.session_state.user_id}_basketball_backup.xlsx"
-                    )
-            else:
-                st.info("No data to backup yet.")
+    excel_data = export_user_data()
+    if excel_data:
+        st.download_button(
+            label="📥 Download My Data Backup",
+            data=excel_data,
+            file_name=f"{st.session_state.user_id}_basketball_backup.xlsx"
+        )
 
 with col2:
-    import_file = st.file_uploader("Import Data from Backup (Excel)", type=["xlsx"])
-    if import_file:
+    import_file = st.file_uploader("📂 Import My Data Backup", type=["xlsx"])
+    if import_file is not None:
         try:
-            df_import = pd.read_excel(import_file)
+            df_import = pd.read_excel(import_file, engine="openpyxl")
             for _, row in df_import.iterrows():
-                data_dict = row.to_dict()
-                save_to_supabase(data_dict.get("activity", "Imported"), data_dict)
-            st.success("✅ Backup data imported successfully!")
+                row_dict = row.to_dict()
+                row_dict["user_id"] = st.session_state.user_id
+                if "timestamp" not in row_dict or pd.isna(row_dict["timestamp"]):
+                    row_dict["timestamp"] = datetime.now().isoformat()
+                supabase.table("user_stats").insert(row_dict).execute()
+            st.success("✅ Data imported successfully!")
         except Exception as e:
-            st.error(f"Error importing backup: {e}")
+            st.error(f"Failed to import data. Error: {e}")
 
 # -------------------------------
-# Graphs in Tabs
+# Graph Section
 # -------------------------------
-st.write("## 📈 Graphs")
-tabs = st.tabs(["Games", "Shooting", "Conditioning", "Dribbling"])
+st.subheader("📈 Graphs")
+activities = ["Games", "Shooting", "Conditioning", "Dribbling"]
 
-for idx, act in enumerate(["Games", "Shooting", "Conditioning", "Dribbling"]):
-    with tabs[idx]:
-        res = supabase.table("user_stats").select("*").eq("user_id", st.session_state.user_id).eq("activity", act).execute()
-        if not res.data:
-            st.info(f"No data for {act} yet.")
-            continue
-        df = pd.DataFrame(res.data)
-        for col in df.columns:
-            if df[col].dtype in ['int64', 'float64']:
-                fig = px.line(df, y=col, x="timestamp", title=f"{act} - {col}", markers=True)
-                st.plotly_chart(fig, use_container_width=True)
+def show_graphs(activity_filter):
+    res = supabase.table("user_stats").select("*").eq("user_id", st.session_state.user_id).eq("activity", activity_filter).execute()
+    if not res.data:
+        st.info(f"No data for {activity_filter} yet.")
+        return
+    df = pd.DataFrame(res.data)
+    for col in df.columns:
+        if df[col].dtype in ['int64', 'float64'] and col not in ["3P Attempt", "2P Attempt"]:
+            fig = px.line(df, y=col, x="timestamp", title=f"{activity_filter} - {col}", markers=True)
+            st.plotly_chart(fig, use_container_width=True)
 
-# -------------------------------
-# Excel Export Button
-# -------------------------------
-st.download_button(
-    label="📥 Export All Data to Excel",
-    data=pd.DataFrame(supabase.table("user_stats").select("*").eq("user_id", st.session_state.user_id).execute().data).to_excel(index=False),
-    file_name="basketball_data.xlsx"
-)
+for act in activities:
+    show_graphs(act)
